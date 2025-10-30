@@ -1,31 +1,37 @@
 services:
   postgres:
-    image: "postgres"
+    image: postgres:16  # Fixa versão 16 (evita o problema de estrutura do 18+)
     environment:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
       - POSTGRES_DB=root
     ports:
-      - 5432:5432
+      - "5432:5432"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data  # Usa volume nomeado (mais seguro)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d root"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   app:
-    image: golang:1.22
-    command:
-      - go
-      - run
-      - main.go
+    build: .  # Usa Dockerfile (melhor que image: golang)
+    command: go run main.go
     volumes:
-      - ./:/app
+      - .:/app
     working_dir: /app
     ports:
-      - 8080:8080
+      - "8080:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy  # Só inicia a app se o banco estiver saudável
     environment:
       - DB_HOST=postgres
       - DB_USER=root
       - DB_PASSWORD=root
       - DB_NAME=root
       - DB_PORT=5432
+
+volumes:
+  postgres_data:  # Volume nomeado (não cria pasta local sensível)
